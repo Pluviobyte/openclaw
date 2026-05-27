@@ -12,6 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
+import { resolveNpmRunner } from "./npm-runner.mjs";
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_OUTPUT_NAME = "openclaw-current.tgz";
@@ -110,11 +111,31 @@ export function validateOpenClawPackageSpec(spec) {
   }
 }
 
+export function resolveNpmPackageCandidatePackRunner(packageSpec, outputDir, params = {}) {
+  validateOpenClawPackageSpec(packageSpec);
+  return resolveNpmRunner({
+    comSpec: params.comSpec,
+    env: params.env,
+    execPath: params.execPath,
+    existsSync: params.existsSync,
+    npmArgs: ["pack", packageSpec, "--ignore-scripts", "--json", "--pack-destination", outputDir],
+    platform: params.platform,
+  });
+}
+
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const spawnOptions = {
       cwd: options.cwd ?? ROOT_DIR,
       stdio: options.capture ? ["ignore", "pipe", "pipe"] : ["ignore", "inherit", "inherit"],
+      ...(options.env ? { env: options.env } : {}),
+      ...(options.shell !== undefined ? { shell: options.shell } : {}),
+      ...(options.windowsVerbatimArguments !== undefined
+        ? { windowsVerbatimArguments: options.windowsVerbatimArguments }
+        : {}),
+    };
+    const child = spawn(command, args, {
+      ...spawnOptions,
     });
     let timedOut = false;
     const timeout =
@@ -416,10 +437,7 @@ function ipv4FromHextets(high, low) {
 }
 
 function ipv4OctetsToHextets(octets) {
-  return [
-    ((octets[0] << 8) | octets[1]).toString(16),
-    ((octets[2] << 8) | octets[3]).toString(16),
-  ];
+  return [((octets[0] << 8) | octets[1]).toString(16), ((octets[2] << 8) | octets[3]).toString(16)];
 }
 
 function parseIpv6Parts(address) {
@@ -791,19 +809,24 @@ async function openFetchPackageDownloadResponse(parsed, options) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
   timeout.unref?.();
-  const response = await options.fetchImpl(parsed, {
-    headers: options.headers,
-    redirect: "manual",
-    signal: controller.signal,
-  }).catch((error) => {
-    clearTimeout(timeout);
-    if (error?.name === "AbortError") {
-      throw new Error(`package_url download timed out after ${options.timeoutMs}ms: ${parsed.toString()}`, {
-        cause: error,
-      });
-    }
-    throw error;
-  });
+  const response = await options
+    .fetchImpl(parsed, {
+      headers: options.headers,
+      redirect: "manual",
+      signal: controller.signal,
+    })
+    .catch((error) => {
+      clearTimeout(timeout);
+      if (error?.name === "AbortError") {
+        throw new Error(
+          `package_url download timed out after ${options.timeoutMs}ms: ${parsed.toString()}`,
+          {
+            cause: error,
+          },
+        );
+      }
+      throw error;
+    });
   return {
     close: async () => closeResponseBody(response.body),
     response,
@@ -846,9 +869,12 @@ async function openHttpsPackageDownloadResponse(parsed, options) {
   }).catch((error) => {
     clearTimeout(timeout);
     if (error?.name === "AbortError" || error?.code === "ABORT_ERR") {
-      throw new Error(`package_url download timed out after ${options.timeoutMs}ms: ${parsed.toString()}`, {
-        cause: error,
-      });
+      throw new Error(
+        `package_url download timed out after ${options.timeoutMs}ms: ${parsed.toString()}`,
+        {
+          cause: error,
+        },
+      );
     }
     throw error;
   });
@@ -1006,19 +1032,15 @@ async function resolveCandidate(options) {
         options.outputName || DEFAULT_OUTPUT_NAME,
       ]);
     } else if (options.source === "npm") {
-      validateOpenClawPackageSpec(options.packageSpec);
-      const packOutput = await run(
-        "npm",
-        [
-          "pack",
-          options.packageSpec,
-          "--ignore-scripts",
-          "--json",
-          "--pack-destination",
-          outputDir,
-        ],
-        { capture: true },
-      );
+      const npmPackRunner = resolveNpmPackageCandidatePackRunner(options.packageSpec, outputDir, {
+        env: process.env,
+      });
+      const packOutput = await run(npmPackRunner.command, npmPackRunner.args, {
+        capture: true,
+        env: npmPackRunner.env,
+        shell: npmPackRunner.shell,
+        windowsVerbatimArguments: npmPackRunner.windowsVerbatimArguments,
+      });
       await moveNewestPackedTarball(
         outputDir,
         packOutput,
