@@ -141,8 +141,8 @@ layer stack for Telegram direct, Discord group, and heartbeat turns. That stack
 includes a pinned Codex `gpt-5.5` model prompt fixture generated from Codex's
 model catalog/cache shape, the Codex happy-path permission developer text,
 OpenClaw developer instructions, turn-scoped collaboration-mode instructions
-when OpenClaw provides them, user turn input, and references to the dynamic tool
-specs.
+for cron and heartbeat turns when OpenClaw provides them, user turn input, and
+references to the dynamic tool specs.
 
 Refresh the pinned Codex model prompt fixture with
 `pnpm prompt:snapshots:sync-codex-model`. By default, the script looks for
@@ -178,12 +178,12 @@ prompt surface that matches their lifetime:
 - `BOOTSTRAP.md` (only on brand-new workspaces)
 - `MEMORY.md` when present
 
-On the native Codex harness, OpenClaw avoids repeating stable workspace files
+On the native Codex harness, OpenClaw avoids repeating standing workspace files
 in every user turn. Codex loads `AGENTS.md` through its own project-doc
-discovery. `SOUL.md`, `IDENTITY.md`, `TOOLS.md`, and `USER.md` are forwarded as
-Codex developer instructions. `HEARTBEAT.md` content is not injected; heartbeat
-turns get a collaboration-mode note pointing to the file when it exists and is
-non-empty. `MEMORY.md` and active `BOOTSTRAP.md` content keep the normal
+discovery. `SOUL.md`, `IDENTITY.md`, `TOOLS.md`, `USER.md`, and `MEMORY.md` are
+forwarded as Codex developer instructions. `HEARTBEAT.md` content is not
+injected; heartbeat turns get a collaboration-mode note pointing to the file
+when it exists and is non-empty. Active `BOOTSTRAP.md` content keeps the normal
 turn-context role for now.
 
 On non-Codex harnesses, bootstrap files continue to be composed into the

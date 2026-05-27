@@ -626,7 +626,6 @@ export async function runCodexAppServerAttempt(
     buildDeveloperInstructions(params, {
       dynamicTools: toolBridge.availableSpecs,
     }),
-    workspaceBootstrapContext.developerInstructions,
   );
   const openClawPromptContext = buildCodexOpenClawPromptContext({
     params,
@@ -753,9 +752,14 @@ export async function runCodexAppServerAttempt(
       heartbeatCollaborationInstructions:
         workspaceBootstrapContext.heartbeatCollaborationInstructions,
     }).settings.developer_instructions ?? undefined;
-  const buildRenderedCodexDeveloperInstructions = () =>
+  const buildCodexThreadDeveloperInstructions = () =>
     joinPresentSections(
       promptBuild.developerInstructions,
+      workspaceBootstrapContext.developerInstructions,
+    );
+  const buildRenderedCodexDeveloperInstructions = () =>
+    joinPresentSections(
+      buildCodexThreadDeveloperInstructions(),
       buildCodexTurnCollaborationDeveloperInstructions(),
     );
   const systemPromptReport = buildCodexSystemPromptReport({
@@ -852,7 +856,7 @@ export async function runCodexAppServerAttempt(
       sessionAgentId,
       effectiveWorkspace,
       dynamicTools: toolBridge.specs,
-      developerInstructions: promptBuild.developerInstructions,
+      developerInstructions: buildCodexThreadDeveloperInstructions(),
       buildFinalConfigPatch: buildNativeHookRelayFinalConfigPatch,
       bundleMcpThreadConfig,
       nativeToolSurfaceEnabled,
@@ -894,7 +898,7 @@ export async function runCodexAppServerAttempt(
   recordCodexTrajectoryContext(trajectoryRecorder, {
     attempt: params,
     cwd: effectiveWorkspace,
-    developerInstructions: promptBuild.developerInstructions,
+    developerInstructions: buildCodexThreadDeveloperInstructions(),
     prompt: codexTurnPromptText,
     tools: toolBridge.availableSpecs,
   });

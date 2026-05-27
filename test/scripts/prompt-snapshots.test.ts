@@ -158,14 +158,14 @@ describe("happy path prompt snapshots", () => {
     );
     expect(telegram).toContain("### User: Codex Config Instructions");
     expect(telegram).toContain("### User: Turn Input Text");
-    expect(telegram).toContain("OpenClaw runtime context for this turn:");
+    expect(telegram).not.toContain("OpenClaw runtime context for this turn:");
     expect(telegram).toContain("<SOUL.md contents will be here>");
     expect(telegram).toContain("<IDENTITY.md contents will be here>");
     expect(telegram).toContain("<TOOLS.md contents will be here>");
     expect(telegram).toContain("<USER.md contents will be here>");
     expect(telegram).toContain("<MEMORY.md contents will be here>");
     expect(telegram).not.toContain("<HEARTBEAT.md contents will be here>");
-    expect(telegram).toContain("Codex loads AGENTS.md natively");
+    expect(telegram).not.toContain("Codex loads AGENTS.md natively");
     expect(telegram).toContain("### Tools: Dynamic Tool Catalog");
   });
 
@@ -174,14 +174,14 @@ describe("happy path prompt snapshots", () => {
     const group = readCommittedSnapshot("discord-group-codex-message-tool.md");
     const heartbeat = readCommittedSnapshot("telegram-heartbeat-codex-tool.md");
     const heartbeatPhrase = "Use heartbeats to create useful proactive progress";
-    const agentSoulHeading = "## OpenClaw Agent Soul";
+    const workspaceInstructionsHeading = "## OpenClaw Workspace Instructions";
 
     expect(direct).toContain('"collaborationMode": {');
-    expect(direct).toContain('"developer_instructions": "# Collaboration Mode: Default');
-    expect(direct).toContain(agentSoulHeading);
+    expect(direct).toContain('"developer_instructions": null');
+    expect(direct).toContain(workspaceInstructionsHeading);
     expect(group).toContain('"collaborationMode": {');
-    expect(group).toContain('"developer_instructions": "# Collaboration Mode: Default');
-    expect(group).toContain(agentSoulHeading);
+    expect(group).toContain('"developer_instructions": null');
+    expect(group).toContain(workspaceInstructionsHeading);
     expect(direct).not.toContain(heartbeatPhrase);
     expect(group).not.toContain(heartbeatPhrase);
     expect(direct).not.toContain("This is an OpenClaw heartbeat turn.");
@@ -189,7 +189,7 @@ describe("happy path prompt snapshots", () => {
 
     expect(heartbeat).toContain('"collaborationMode": {');
     expect(heartbeat).toContain('"developer_instructions": "This is an OpenClaw heartbeat turn.');
-    expect(heartbeat).toContain(agentSoulHeading);
+    expect(heartbeat).toContain(workspaceInstructionsHeading);
     const openClawRuntimeInstructions = renderedPromptSection(
       heartbeat,
       "### Developer: OpenClaw Runtime Instructions",
@@ -202,6 +202,7 @@ describe("happy path prompt snapshots", () => {
     );
 
     expect(openClawRuntimeInstructions).not.toContain(heartbeatPhrase);
+    expect(collaborationModeInstructions).not.toContain(workspaceInstructionsHeading);
     expect(collaborationModeInstructions).toContain(heartbeatPhrase);
     expect(collaborationModeInstructions).toContain("HEARTBEAT.md exists");
     expect(collaborationModeInstructions).toContain(
