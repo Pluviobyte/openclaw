@@ -8,6 +8,18 @@ vi.mock("../../plugins/provider-runtime.js", () => ({
 
 const TEST_PDF_INPUT = { base64: "dGVzdA==", filename: "doc.pdf" } as const;
 
+async function expectRejectedError(promise: Promise<unknown>): Promise<Error> {
+  try {
+    await promise;
+  } catch (error) {
+    if (error instanceof Error) {
+      return error;
+    }
+    throw new Error("expected rejection to be an Error", { cause: error });
+  }
+  throw new Error("expected promise to reject");
+}
+
 function makeAnthropicAnalyzeParams(
   overrides: Partial<{
     apiKey: string;
@@ -129,9 +141,9 @@ describe("native PDF provider API calls", () => {
       }),
     );
 
-    const error = await pdfNativeProviders
-      .anthropicAnalyzePdf(makeAnthropicAnalyzeParams())
-      .catch((caught: unknown) => caught as Error);
+    const error = await expectRejectedError(
+      pdfNativeProviders.anthropicAnalyzePdf(makeAnthropicAnalyzeParams()),
+    );
 
     expect(error).toBeInstanceOf(Error);
     expect(error.message).toContain("Anthropic PDF request failed");
@@ -158,9 +170,7 @@ describe("native PDF provider API calls", () => {
     );
 
     const error = await Promise.race([
-      pdfNativeProviders
-        .anthropicAnalyzePdf(makeAnthropicAnalyzeParams())
-        .catch((caught: unknown) => caught as Error),
+      expectRejectedError(pdfNativeProviders.anthropicAnalyzePdf(makeAnthropicAnalyzeParams())),
       new Promise<Error>((_resolve, reject) => {
         setTimeout(() => reject(new Error("timed out waiting for bounded error body")), 500);
       }),
