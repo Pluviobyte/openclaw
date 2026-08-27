@@ -51,14 +51,14 @@ describe("github-copilot provider-policy-api", () => {
     ).toContain("max");
   });
 
-  it("does not expose max for non-Anthropic Copilot transports", () => {
+  it("appends max when GPT catalog compat advertises it", () => {
     expect(
       resolveThinkingProfile({
         provider: "github-copilot",
-        modelId: "future-copilot-model",
+        modelId: "gpt-5.6-sol",
         compat: { supportedReasoningEfforts: ["low", "medium", "high", "max"] },
       })?.levels.map((level) => level.id),
-    ).not.toContain("max");
+    ).toContain("max");
   });
 
   it("does not expose adaptive effort for older Claude models", () => {
@@ -68,6 +68,31 @@ describe("github-copilot provider-policy-api", () => {
         modelId: "claude-opus-4-5",
         compat: { supportedReasoningEfforts: ["low", "medium", "high", "max"] },
       })?.levels.map((level) => level.id),
+    ).not.toContain("max");
+  });
+
+  it.each([
+    { supportedReasoningEfforts: ["low", "medium", "high"] },
+    { supportedReasoningEfforts: [] },
+    { supportsReasoningEffort: false, supportedReasoningEfforts: ["xhigh", "max"] },
+  ])("honors explicit catalog limits before static GPT metadata: %j", (compat) => {
+    expect(
+      resolveThinkingProfile({
+        provider: "github-copilot",
+        modelId: "gpt-5.6-luna",
+        compat,
+      })?.levels.map(({ id }) => id),
+    ).toEqual(["off", "minimal", "low", "medium", "high"]);
+  });
+
+  it("does not expose max on the Gemini Chat Completions transport", () => {
+    expect(
+      resolveThinkingProfile({
+        provider: "github-copilot",
+        modelId: "gemini-3.6-flash",
+        api: "openai-completions",
+        compat: { supportedReasoningEfforts: ["low", "medium", "high", "max"] },
+      })?.levels.map(({ id }) => id),
     ).not.toContain("max");
   });
 
