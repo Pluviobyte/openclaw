@@ -101,9 +101,10 @@ export function resolveCopilotModelCompat(
 export function resolveCopilotThinkingLevelMap(
   modelId: string,
   compat?: CopilotReasoningCompat | null,
-  api: ModelDefinitionConfig["api"] = resolveCopilotTransportApi(modelId),
+  api?: string | null,
 ): ModelDefinitionConfig["thinkingLevelMap"] | undefined {
   const normalizedModelId = normalizeOptionalLowercaseString(modelId) ?? "";
+  const runtimeApi = api ?? resolveCopilotTransportApi(normalizedModelId);
   const staticCompat = resolveStaticCopilotModelOverride(normalizedModelId)?.compat;
   // A declared account catalog is authoritative, including explicit opt-outs;
   // the manifest only supplies effort metadata when discovery has none.
@@ -116,15 +117,17 @@ export function resolveCopilotThinkingLevelMap(
   }
   const supported = new Set(efforts.map(normalizeOptionalLowercaseString));
   const supportsEffort =
-    api !== "anthropic-messages" || supportsClaudeAdaptiveThinking({ id: normalizedModelId });
+    runtimeApi !== "anthropic-messages" ||
+    supportsClaudeAdaptiveThinking({ id: normalizedModelId });
   return {
     // Keep the public minimal setting usable when this route starts its native ladder at low.
-    ...(api === "openai-responses" && !supported.has("minimal") && supported.has("low")
+    ...(runtimeApi === "openai-responses" && !supported.has("minimal") && supported.has("low")
       ? { minimal: "low" }
       : {}),
     xhigh: supportsEffort && supported.has("xhigh") ? "xhigh" : null,
     // Chat Completions currently translates max to xhigh rather than preserving it.
-    max: supportsEffort && api !== "openai-completions" && supported.has("max") ? "max" : null,
+    max:
+      supportsEffort && runtimeApi !== "openai-completions" && supported.has("max") ? "max" : null,
   };
 }
 
