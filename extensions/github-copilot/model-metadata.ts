@@ -1,5 +1,5 @@
 // Github Copilot plugin module implements model metadata behavior.
-import { buildManifestModelDefinition } from "openclaw/plugin-sdk/provider-catalog-shared";
+import { buildManifestModelProviderConfig } from "openclaw/plugin-sdk/provider-catalog-shared";
 import type { ModelDefinitionConfig } from "openclaw/plugin-sdk/provider-model-shared";
 import { supportsClaudeAdaptiveThinking } from "openclaw/plugin-sdk/provider-model-shared";
 import { normalizeOptionalLowercaseString } from "openclaw/plugin-sdk/string-coerce-runtime";
@@ -22,17 +22,14 @@ const COPILOT_CHAT_COMPLETIONS_COMPAT: ModelDefinitionConfig["compat"] = {
   maxTokensField: "max_tokens",
 };
 const manifestCatalog = manifest.modelCatalog.providers["github-copilot"];
-const manifestModels = manifestCatalog.models.map(
-  buildManifestModelDefinition({
-    providerId: "github-copilot",
-    catalog: manifestCatalog,
-    decorate: (model) => ({
-      ...model,
-      api: resolveCopilotTransportApi(model.id),
-      compat: { ...resolveCopilotModelCompat(model.id), ...model.compat },
-    }),
-  }),
-);
+const manifestModels = buildManifestModelProviderConfig({
+  providerId: "github-copilot",
+  catalog: manifestCatalog,
+}).models.map((model) => ({
+  ...model,
+  api: resolveCopilotTransportApi(model.id),
+  compat: { ...resolveCopilotModelCompat(model.id), ...model.compat },
+}));
 
 const STATIC_MODEL_OVERRIDES = new Map<string, Partial<ModelDefinitionConfig>>([
   ...manifestModels.map((model) => [model.id, model] as const),
